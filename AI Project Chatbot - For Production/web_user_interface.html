@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KU ChatBot — Karnvati University AI Assistant</title>
+    <meta name="description"
+        content="AI-powered university chatbot for Karnvati University. Ask about courses, roles, academic years, and more.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-base: #080b14;
+            --bg-card: #0d1120;
+            --bg-elevated: #131826;
+            --bg-input: #181f30;
+            --cyan: #06b6d4;
+            --cyan-dark: #0891b2;
+            --pink: #ec4899;
+            --pink-dark: #db2777;
+            --orange: #f97316;
+            --yellow: #fbbf24;
+            --green: #10b981;
+            --violet: #8b5cf6;
+            --blue: #3b82f6;
+            --grad-main: linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899);
+            --grad-btn: linear-gradient(135deg, #06b6d4, #3b82f6);
+            --grad-user: linear-gradient(135deg, #ec4899, #f97316);
+            --glow-cyan: rgba(6, 182, 212, 0.2);
+            --glow-pink: rgba(236, 72, 153, 0.2);
+            --border: rgba(255, 255, 255, 0.06);
+            --border-cyan: rgba(6, 182, 212, 0.35);
+            --text-primary: #f0f4ff;
+            --text-muted: #6b7280;
+            --text-dim: #2d3748;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* ── ANIMATED BACKGROUND ─────────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 20% 20%, rgba(6, 182, 212, 0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 400px at 80% 80%, rgba(236, 72, 153, 0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 300px at 50% 50%, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 270px 1fr;
+            height: 100vh;
+        }
+
+        /* ══════════════════════════════════════════════════
+           SIDEBAR
+        ══════════════════════════════════════════════════ */
+        .sidebar {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 18px;
+            gap: 22px;
+            overflow-y: auto;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--bg-elevated);
+            border-radius: 3px;
+        }
+
+        /* Brand */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 4px;
+        }
+
+        .brand-icon {
+            width: 46px;
+            height: 46px;
+            background: var(--grad-main);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        .brand-text .brand-name {
+            font-size: 15px;
+            font-weight: 800;
+            background: var(--grad-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .brand-text .brand-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.2), rgba(236, 72, 153, 0.2), transparent);
+        }
+
+        /* Section title */
+        .sec-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        /* Status list */
+        .status-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 12px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            font-size: 11.5px;
+            color: var(--text-muted);
+            transition: border-color 0.3s;
+        }
+
+        .status-item:hover {
+            border-color: rgba(6, 182, 212, 0.2);
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dot-green {
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: blink 2.5s infinite;
+        }
+
+        .dot-cyan {
+            background: var(--cyan);
+            box-shadow: 0 0 6px var(--cyan);
+            animation: blink 2.5s infinite 0.3s;
+        }
+
+        .dot-yellow {
+            background: var(--yellow);
+            box-shadow: 0 0 6px var(--yellow);
+            animation: blink 2.5s infinite 0.6s;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.35
+            }
+        }
+
+        /* Quick chips */
+        .chips {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .chip {
+            padding: 9px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chip:hover {
+            background: var(--bg-input);
+            border-color: var(--border-cyan);
+            color: var(--cyan);
+            transform: translateX(4px);
+        }
+
+        /* Admin buttons */
+        .admin-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: auto;
+        }
+
+        .btn-admin {
+            padding: 9px 13px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .btn-admin:hover {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-admin.red:hover {
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #fca5a5;
+        }
+
+        .btn-admin.cyan:hover {
+            border-color: var(--border-cyan);
+            color: var(--cyan);
+        }
+
+        /* ══════════════════════════════════════════════════
+           MAIN CHAT
+        ══════════════════════════════════════════════════ */
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Topbar */
+        .topbar {
+            padding: 14px 26px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bot-avatar-top {
+            width: 40px;
+            height: 40px;
+            background: var(--grad-main);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2), 0 0 20px rgba(236, 72, 153, 0.15);
+        }
+
+        .topbar-info .topbar-name {
+            font-size: 14px;
+            font-weight: 700;
+            background: var(--grad-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .topbar-status {
+            font-size: 11px;
+            color: var(--green);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .topbar-status::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: blink 2s infinite;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tag {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .tag-cyan {
+            background: rgba(6, 182, 212, 0.12);
+            color: var(--cyan);
+            border: 1px solid rgba(6, 182, 212, 0.25);
+        }
+
+        .tag-pink {
+            background: rgba(236, 72, 153, 0.12);
+            color: var(--pink);
+            border: 1px solid rgba(236, 72, 153, 0.25);
+        }
+
+        .tag-gold {
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--yellow);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+        }
+
+        /* Messages */
+        #chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 26px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scroll-behavior: smooth;
+        }
+
+        #chat-box::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #chat-box::-webkit-scrollbar-thumb {
+            background: var(--bg-elevated);
+            border-radius: 4px;
+        }
+
+        /* Welcome */
+        .welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            padding: 48px 20px;
+            text-align: center;
+            animation: fadeUp 0.5s ease;
+        }
+
+        .welcome-orb {
+            width: 72px;
+            height: 72px;
+            background: var(--grad-main);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3), 0 0 60px rgba(236, 72, 153, 0.15);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .welcome h2 {
+            font-size: 26px;
+            font-weight: 800;
+            background: var(--grad-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome p {
+            font-size: 13px;
+            color: var(--text-muted);
+            max-width: 360px;
+            line-height: 1.7;
+        }
+
+        .welcome-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+
+        .welcome-chip {
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            border: 1px solid;
+        }
+
+        .wc-cyan {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--cyan);
+            border-color: rgba(6, 182, 212, 0.25);
+        }
+
+        .wc-pink {
+            background: rgba(236, 72, 153, 0.1);
+            color: var(--pink);
+            border-color: rgba(236, 72, 153, 0.25);
+        }
+
+        .wc-volt {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--violet);
+            border-color: rgba(139, 92, 246, 0.25);
+        }
+
+        .wc-org {
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--orange);
+            border-color: rgba(249, 115, 22, 0.25);
+        }
+
+        .welcome-chip:hover {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+
+        /* Message row */
+        .msg-row {
+            display: flex;
+            gap: 11px;
+            align-items: flex-end;
+            animation: fadeUp 0.3s ease;
+        }
+
+        .msg-row.user-row {
+            flex-direction: row-reverse;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .av {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .av-bot {
+            background: var(--grad-main);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+        }
+
+        .av-user {
+            background: var(--grad-user);
+            box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
+        }
+
+        .msg-content {
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .user-row .msg-content {
+            align-items: flex-end;
+            max-width: 70%;
+        }
+
+        .msg-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 0 4px;
+            font-weight: 500;
+        }
+
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 13.5px;
+            line-height: 1.68;
+            overflow-wrap: break-word;
+            min-width: 0;
+            width: 100%;
+        }
+
+        .bubble-bot {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .bubble-user {
+            background: var(--grad-user);
+            border-bottom-right-radius: 4px;
+            color: #fff;
+        }
+
+        /* Markdown Styles */
+        .markdown-body p { margin-bottom: 10px; }
+        .markdown-body p:last-child { margin-bottom: 0; }
+        .markdown-body strong { color: #fff; font-weight: 600; }
+        .markdown-body em { color: #cbd5e1; }
+        .markdown-body ul { margin-left: 20px; margin-bottom: 10px; list-style-type: disc; }
+        .markdown-body ol { margin-left: 20px; margin-bottom: 10px; list-style-type: decimal; }
+        .markdown-body li { margin-bottom: 4px; }
+        .markdown-body code {
+            background: rgba(255,255,255,0.08);
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--cyan);
+        }
+        .markdown-body pre {
+            background: var(--bg-elevated);
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        .markdown-body a { color: var(--cyan); text-decoration: none; }
+        .markdown-body a:hover { text-decoration: underline; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            color: #fff;
+            margin-top: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .markdown-body h3 { font-size: 14px; }
+        .markdown-body h2 { font-size: 15px; }
+        .markdown-body h1 { font-size: 16px; }
+
+        .bubble-sys {
+            background: rgba(251, 191, 36, 0.07);
+            border: 1px solid rgba(251, 191, 36, 0.18);
+            color: var(--yellow);
+            font-size: 12px;
+            border-radius: 10px;
+            padding: 8px 14px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .msg-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 4px;
+        }
+
+        .msg-time {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .b-cache {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .b-rag {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--cyan);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .b-ai {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--violet);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        /* Typing */
+        .typing-row {
+            display: flex;
+            gap: 11px;
+            align-items: flex-end;
+            animation: fadeUp 0.3s ease;
+        }
+
+        .typing-bubble {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            padding: 14px 18px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .td {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            animation: tdBounce 1.3s infinite;
+        }
+
+        .td:nth-child(1) {
+            background: var(--cyan);
+            animation-delay: 0s;
+        }
+
+        .td:nth-child(2) {
+            background: var(--violet);
+            animation-delay: 0.2s;
+        }
+
+        .td:nth-child(3) {
+            background: var(--pink);
+            animation-delay: 0.4s;
+        }
+
+        @keyframes tdBounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+
+            30% {
+                transform: translateY(-6px);
+                opacity: 1;
+            }
+        }
+
+        /* Tables from backend */
+        .overflow-x-auto {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        .overflow-y-auto {
+            overflow-y: auto;
+        }
+
+        .max-h-64 {
+            max-height: 18rem;
+        }
+
+        #chat-box table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: max-content;
+            font-size: 12px;
+            margin-top: 8px;
+            border-radius: 8px;
+            overflow: hidden;
+            white-space: nowrap !important;
+        }
+
+        #chat-box th {
+            background: #1a1f30;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--cyan);
+            white-space: nowrap;
+        }
+
+        #chat-box td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: #d1d5db;
+            white-space: nowrap;
+        }
+
+        #chat-box tr:hover td {
+            background: rgba(6, 182, 212, 0.04);
+        }
+
+        /* ── INPUT AREA ──────────────────────────────────────── */
+        .input-area {
+            padding: 14px 26px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-card);
+            flex-shrink: 0;
+        }
+
+        .input-shell {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 10px 10px 10px 18px;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+
+        .input-shell:focus-within {
+            border-color: rgba(6, 182, 212, 0.5);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1), 0 0 20px rgba(236, 72, 153, 0.08);
+        }
+
+        #user-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            resize: none;
+            max-height: 120px;
+            line-height: 1.5;
+            padding: 4px 0;
+        }
+
+        #user-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .send-btn {
+            width: 42px;
+            height: 42px;
+            background: var(--grad-btn);
+            border: none;
+            border-radius: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+        }
+
+        .send-btn:hover {
+            transform: scale(1.07);
+            box-shadow: 0 6px 22px rgba(6, 182, 212, 0.5);
+        }
+
+        .send-btn:active {
+            transform: scale(0.96);
+        }
+
+        .send-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        .input-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 9px;
+        }
+
+        /* ── RESPONSIVE ─────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            #chat-box {
+                padding: 16px;
+            }
+
+            .input-area {
+                padding: 12px 16px 16px;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 20, 0.8);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            width: 500px;
+            max-width: 90%;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .syn-chain-container {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .syn-chain-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+        }
+
+        .syn-base-word {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--cyan);
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 150px;
+        }
+
+        .syn-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-left: 4px;
+        }
+
+        .syn-btn:hover {
+            color: white;
+        }
+
+        .syn-btn.delete:hover {
+            color: #ef4444;
+        }
+
+        .syn-nodes-wrapper {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-top: 4px;
+        }
+
+        .syn-arrow {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .syn-node {
+            display: flex;
+            align-items: center;
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 12px;
+            color: #e2e8f0;
+        }
+
+        .syn-remove-node {
+            margin-left: 4px;
+            color: #ef4444;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .syn-add-node {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed var(--text-dim);
+            color: var(--text-muted);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .syn-add-node:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .btn-add-chain {
+            background: var(--bg-elevated);
+            border: 1px dashed var(--border-cyan);
+            color: var(--cyan);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .btn-add-chain:hover {
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .btn-save {
+            background: var(--grad-btn);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .btn-save:hover {
+            opacity: 0.9;
+        }
+
+        /* Discover API Button */
+        .btn-discover-api {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            transition: all 0.2s;
+        }
+
+        .btn-discover-api:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-discover-api:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .discover-result-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-save-rag {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-save-rag:hover {
+            opacity: 0.85;
+        }
+
+        .btn-discard-rag {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            border-radius: 8px;
+            padding: 9px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-discard-rag:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Manage Synonyms Modal -->
+    <div id="synonyms-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <span>📖 Manage Semantic Synonyms</span>
+                <button class="modal-close" onclick="closeSynonymsModal()">✕</button>
+            </div>
+            <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">
+                Map a base keyword to its semantic synonyms to expand the AI's search capabilities.<br>
+                Format: <code>arts</code> → <code>hons</code> → <code>mba</code>
+            </div>
+            <div id="synonyms-container" style="max-height: 400px; overflow-y: auto; padding-right: 8px;">
+                <!-- Rows injected here -->
+            </div>
+            <div class="btn-add-chain" onclick="addNewChain()">+ Create New Synonym Chain</div>
+            <button class="btn-save" onclick="saveSynonyms()">💾 Save Configuration to Redis</button>
+        </div>
+    </div>
+    <div class="app">
+
+        <!-- ════════════ SIDEBAR ════════════ -->
+        <aside class="sidebar">
+
+            <div class="brand">
+                <div class="brand-icon">🎓</div>
+                <div class="brand-text">
+                    <div class="brand-name">University ChatBot</div>
+                    <div class="brand-sub">Karnvati University</div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div>
+                <p class="sec-title">System Status</p>
+                <div class="status-list">
+                    <div class="status-item"><span class="dot dot-green"></span>RAG Store — Swagger Docs</div>
+                    <div class="status-item"><span class="dot dot-cyan"></span>RAG Store — University Data</div>
+                    <div class="status-item"><span class="dot dot-yellow"></span>Redis Cloud Cache</div>
+                    <div class="status-item"><span class="dot dot-green"></span>Nightly Refresh Scheduler</div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div>
+                <p class="sec-title">Quick Questions</p>
+                <div class="chips">
+                    <button class="chip" onclick="sendQuick('Show all MTech courses')">📚 MTech courses</button>
+                    <button class="chip" onclick="sendQuick('List all university roles')">👥 University roles</button>
+                    <button class="chip" onclick="sendQuick('Show all academic years')">📅 Academic years</button>
+                    <button class="chip" onclick="sendQuick('Show all engineering courses')">⚙️ Engineering
+                        courses</button>
+                    <button class="chip" onclick="sendQuick('How many total courses are there?')">🔢 Total course
+                        count</button>
+                    <button class="chip" onclick="sendQuick('Show all BCA courses')">💻 BCA courses</button>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="admin-btns">
+                <p class="sec-title">Admin Panel</p>
+                <button class="btn-admin cyan" onclick="triggerRefresh()">🔄 &nbsp;Trigger Nightly Refresh</button>
+                <button class="btn-admin cyan" onclick="viewAnalytics()">📊 &nbsp;View Search Analytics</button>
+                <button class="btn-admin" onclick="openSynonymsModal()">📖 &nbsp;Manage Synonyms</button>
+                <button class="btn-admin" onclick="clearServerCache()">🧹 &nbsp;Wipe Redis Cache</button>
+                <button class="btn-admin red" onclick="wipeRag()">🗑️ &nbsp;Wipe RAG Database</button>
+                <button class="btn-admin red" onclick="clearChat()">✕ &nbsp;Clear Chat</button>
+            </div>
+
+        </aside>
+
+        <!-- ════════════ CHAT ════════════ -->
+        <div class="chat-area">
+
+            <div class="topbar">
+                <div class="topbar-left">
+                    <div class="bot-avatar-top">🤖</div>
+                    <div class="topbar-info">
+                        <div class="topbar-name">University ChatBot</div>
+                        <div class="topbar-status">Online · All systems active</div>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <span class="tag tag-cyan">RAG Enabled</span>
+                    <span class="tag tag-pink">AI Powered</span>
+                    <span class="tag tag-gold">Enterprise</span>
+                </div>
+            </div>
+
+            <div id="chat-box">
+                <div class="welcome">
+                    <div class="welcome-orb">🎓</div>
+                    <h2>Hi! I'm your University ChatBot</h2>
+                    <p>I can help you find courses, roles, academic years, and all university data — instantly from my
+                        local database.</p>
+                    <div class="welcome-chips">
+                        <button class="welcome-chip wc-cyan" onclick="sendQuick('Show all MTech courses')">📚 MTech
+                            Courses</button>
+                        <button class="welcome-chip wc-pink" onclick="sendQuick('List all university roles')">👥
+                            University Roles</button>
+                        <button class="welcome-chip wc-volt" onclick="sendQuick('Show all engineering courses')">⚙️
+                            Engineering</button>
+                        <button class="welcome-chip wc-org" onclick="sendQuick('How many total courses?')">🔢 Course
+                            Count</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-shell">
+                    <textarea id="user-input" rows="1" placeholder="Ask me anything about the university..."
+                        oninput="autoResize(this)"
+                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
+                </textarea>
+                    <select id="search-mode"
+                        style="background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary); border-radius: 12px; padding: 8px 12px; outline: none; font-family: 'Inter', sans-serif; font-size: 13px; cursor: pointer; flex-shrink: 0;">
+                        <option value="auto">Auto (Smart)</option>
+                        <option value="bot">Chat-Bot</option>
+                        <option value="data">Data-Search (RAG)</option>
+                    </select>
+                    <button class="send-btn" onclick="sendMessage()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                        </svg>
+                    </button>
+                </div>
+                <p class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let chatHistory = [];
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+
+        function now() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function esc(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function addUserMsg(text) {
+            const box = document.getElementById('chat-box');
+            const row = document.createElement('div');
+            row.className = 'msg-row user-row';
+            row.innerHTML = `
+            <div class="av av-user">👤</div>
+            <div class="msg-content">
+                <div class="msg-label">You</div>
+                <div class="bubble bubble-user">${esc(text)}</div>
+                <div class="msg-time">${now()}</div>
+            </div>`;
+            box.appendChild(row);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function addBotMsg(html, secs, cached, isRag) {
+            const box = document.getElementById('chat-box');
+            const row = document.createElement('div');
+            row.className = 'msg-row';
+            let badge = cached
+                ? `<span class="badge b-cache">⚡ Cache · ${secs}s</span>`
+                : isRag
+                    ? `<span class="badge b-rag">📚 RAG · ${secs}s</span>`
+                    : `<span class="badge b-ai">✦ AI · ${secs}s</span>`;
+                    
+            let parsedHtml = html;
+            try {
+                if (typeof marked !== 'undefined') {
+                    // Prevent marked from mangling existing table HTML we injected from backend
+                    parsedHtml = marked.parse(html);
+                }
+            } catch (e) { console.error('Markdown parsing failed', e); }
+
+            row.innerHTML = `
+            <div class="av av-bot">🤖</div>
+            <div class="msg-content">
+                <div class="msg-label">University ChatBot</div>
+                <div class="bubble bubble-bot markdown-body">${parsedHtml}</div>
+                <div class="msg-meta">
+                    <span class="msg-time">${now()}</span>
+                    ${badge}
+                </div>
+            </div>`;
+            box.appendChild(row);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function addSysMsg(text) {
+            const box = document.getElementById('chat-box');
+            const row = document.createElement('div');
+            row.className = 'msg-row';
+            row.innerHTML = `<div class="bubble-sys">${text}</div>`;
+            box.appendChild(row);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function showTyping() {
+            const box = document.getElementById('chat-box');
+            const el = document.createElement('div');
+            el.id = 'typing'; el.className = 'typing-row';
+            el.innerHTML = `
+            <div class="av av-bot">🤖</div>
+            <div class="typing-bubble">
+                <div class="td"></div><div class="td"></div><div class="td"></div>
+            </div>`;
+            box.appendChild(el);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function hideTyping() {
+            const el = document.getElementById('typing');
+            if (el) el.remove();
+        }
+
+        async function sendMessage() {
+            const inp = document.getElementById('user-input');
+            const modeSelect = document.getElementById('search-mode');
+            const msg = inp.value.trim();
+            const mode = modeSelect ? modeSelect.value : "auto";
+
+            if (!msg) return;
+            addUserMsg(msg);
+            inp.value = ''; inp.style.height = 'auto';
+            showTyping();
+            const t0 = performance.now();
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg, history: chatHistory, mode: mode })
+                });
+                const data = await res.json();
+                const secs = ((performance.now() - t0) / 1000).toFixed(2);
+                hideTyping();
+                if (res.ok) {
+                    // ── Intercept NO_DATA_FOUND marker ──
+                    if (data.reply && data.reply.startsWith('__NO_DATA_FOUND__')) {
+                        const payload = JSON.parse(data.reply.replace('__NO_DATA_FOUND__', ''));
+                        const noDataHtml = `
+                        <div style="color:var(--text-dim); font-size:13px; margin-bottom:10px;">
+                            🔍 No data found for <strong style="color:white">${payload.query}</strong> in the local RAG database.<br>
+                            <span style="font-size:11px; color:var(--text-dim);">The university has 87+ APIs. Want to search them live?</span>
+                        </div>
+                        <button class="btn-discover-api" id="disc-btn-${Date.now()}" onclick="discoverFromAPI(this, ${JSON.stringify(payload.query).replace(/"/g, '&quot;')})">
+                            🌐 Search University APIs
+                        </button>`;
+                        addBotMsg(noDataHtml, secs, false, false);
+                        return;
+                    }
+                    // Normal response
+                    const isRag = data.reply.includes('LOCAL DATABASE RESULTS') || data.reply.includes('university database');
+                    addBotMsg(data.reply, secs, data.cached, isRag);
+                    chatHistory.push({ role: 'user', content: msg });
+                    chatHistory.push({ role: 'assistant', content: data.reply });
+                } else {
+                    addBotMsg('Sorry, something went wrong: ' + (data.detail || 'Unknown error'), secs, false, false);
+                }
+            } catch (e) {
+                hideTyping();
+                addBotMsg('Could not reach the server. Please check your connection.', '—', false, false);
+            }
+        }
+
+        function sendQuick(q) {
+            document.getElementById('user-input').value = q;
+            sendMessage();
+        }
+
+        function clearChat() {
+            chatHistory = [];
+            const box = document.getElementById('chat-box');
+            box.innerHTML = '';
+            const w = document.createElement('div');
+            w.className = 'welcome';
+            w.innerHTML = `
+            <div class="welcome-orb">🎓</div>
+            <h2>Chat Cleared</h2>
+            <p>Ready for a new conversation. Ask me anything about Karnvati University.</p>`;
+            box.appendChild(w);
+        }
+
+        async function clearServerCache() {
+            addSysMsg('Wiping Redis cloud cache...');
+            try {
+                const res = await fetch('/api/clear-cache', { method: 'POST' });
+                const d = await res.json();
+                addSysMsg(res.ok ? '✅ ' + d.message : '⚠️ Failed to wipe cache.');
+            } catch { addSysMsg('⚠️ Server connection failed.'); }
+        }
+
+        async function wipeRag() {
+            if (!confirm("Are you sure you want to delete the local FAISS database? The AI will not be able to search offline data until the nightly refresh runs again.")) return;
+            addSysMsg('Wiping local RAG database...');
+            try {
+                const res = await fetch('/api/wipe-rag', { method: 'POST' });
+                const d = await res.json();
+                addSysMsg(res.ok ? '✅ ' + d.message : '⚠️ Failed to wipe RAG.');
+            } catch { addSysMsg('⚠️ Server connection failed.'); }
+        }
+
+        let _refreshPolling = false;
+
+        async function triggerRefresh() {
+            // Prevent clicking while already polling
+            if (_refreshPolling) {
+                addSysMsg('\u23f3 Refresh is already running — please wait for it to finish.');
+                return;
+            }
+
+            addSysMsg('\ud83d\udd04 Starting nightly data refresh — old RAG will be wiped and rebuilt...');
+            _refreshPolling = true;
+            _setRefreshBtnState(true);
+
+            try {
+                const res = await fetch('/api/trigger-nightly-refresh', { method: 'POST' });
+                const d = await res.json();
+
+                if (d.already_running) {
+                    addSysMsg('\u23f3 ' + d.message);
+                    // Still poll because a run IS in progress
+                } else {
+                    addSysMsg('\u2705 ' + d.message);
+                }
+
+                // Start polling for live progress
+                _pollRefreshStatus();
+
+            } catch (e) {
+                addSysMsg('\u26a0\ufe0f Server connection failed.');
+                _refreshPolling = false;
+                _setRefreshBtnState(false);
+            }
+        }
+
+        async function _pollRefreshStatus() {
+            try {
+                const res = await fetch('/api/refresh-status');
+                const s = await res.json();
+
+                if (s.is_running) {
+                    // Show progress
+                    const pct = s.total_steps > 0 ? Math.round((s.step / s.total_steps) * 100) : 0;
+                    const bar = '\u2588'.repeat(Math.floor(pct / 5)) + '\u2591'.repeat(20 - Math.floor(pct / 5));
+                    _updateLastSysMsg(`\ud83d\udd04 ${s.progress}  [${bar}] ${pct}%`);
+                    // Poll again after 3 seconds
+                    setTimeout(_pollRefreshStatus, 3000);
+                } else {
+                    // Done
+                    _refreshPolling = false;
+                    _setRefreshBtnState(false);
+                    if (s.last_result === 'success') {
+                        addSysMsg('\u2705 Nightly refresh complete! All data loaded successfully. RAG Store is up to date.');
+                    } else if (s.last_result === 'no_data') {
+                        addSysMsg('\u26a0\ufe0f Refresh ran but no data was fetched. Check API availability.');
+                    } else {
+                        addSysMsg('\u274c Refresh failed. Check the server logs for details.');
+                    }
+                }
+            } catch (e) {
+                _refreshPolling = false;
+                _setRefreshBtnState(false);
+                addSysMsg('\u26a0\ufe0f Lost connection while polling refresh status.');
+            }
+        }
+
+        function _updateLastSysMsg(text) {
+            const box = document.getElementById('chat-box');
+            const msgs = box.querySelectorAll('.bubble-sys');
+            if (msgs.length > 0) {
+                msgs[msgs.length - 1].innerHTML = text;
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        function _setRefreshBtnState(disabled) {
+            // Find the sidebar refresh button and toggle its state
+            const btns = document.querySelectorAll('.btn-admin');
+            for (const btn of btns) {
+                if (btn.textContent.includes('Nightly Refresh')) {
+                    btn.disabled = disabled;
+                    btn.style.opacity = disabled ? '0.5' : '1';
+                    btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+                    if (disabled) {
+                        btn.dataset.originalText = btn.innerHTML;
+                        btn.innerHTML = '\u23f3 &nbsp;Refresh Running...';
+                    } else if (btn.dataset.originalText) {
+                        btn.innerHTML = btn.dataset.originalText;
+                    }
+                    break;
+                }
+            }
+        }
+
+
+        async function viewAnalytics() {
+            addSysMsg('Fetching search analytics...');
+            try {
+                const res = await fetch('/api/analytics');
+                const d = await res.json();
+                if (!res.ok) { addSysMsg('⚠️ Failed to fetch analytics.'); return; }
+                const rows = d.top_queries.length
+                    ? d.top_queries.slice(0, 10).map((q, i) =>
+                        `<tr>
+                        <td style="color:#06b6d4;width:28px;font-weight:700">${i + 1}</td>
+                        <td>${esc(q.query)}</td>
+                        <td style="color:#34d399;text-align:right;font-weight:600">${q.searches}×</td>
+                    </tr>`).join('')
+                    : `<tr><td colspan="3" style="color:#4b5563;text-align:center;padding:16px">No searches recorded yet</td></tr>`;
+                addBotMsg(`
+                <div style="font-size:12.5px">
+                    <div style="background:linear-gradient(135deg,#06b6d4,#8b5cf6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;font-size:14px;margin-bottom:12px">📊 Top Search Analytics</div>
+                    <table style="width:100%;border-collapse:collapse">
+                        <tr style="font-size:10px;color:#4b5563">
+                            <th style="text-align:left;padding:6px 8px">#</th>
+                            <th style="text-align:left;padding:6px 8px">Query</th>
+                            <th style="text-align:right;padding:6px 8px">Searches</th>
+                        </tr>
+                        ${rows}
+                    </table>
+                    <div style="color:#2d3748;font-size:10px;margin-top:10px">Generated: ${new Date(d.generated_at).toLocaleString()}</div>
+                </div>`, '—', false, false);
+            } catch { addSysMsg('⚠️ Server connection failed.'); }
+        }
+        /* ── SYNONYMS MODAL LOGIC ── */
+        let synonymsState = {};
+
+        async function openSynonymsModal() {
+            document.getElementById('synonyms-modal').style.display = 'flex';
+            document.getElementById('synonyms-container').innerHTML = '<div style="color:var(--text-dim)">Loading...</div>';
+            try {
+                const res = await fetch('/api/synonyms');
+                const data = await res.json();
+                synonymsState = data;
+                renderSynonyms();
+            } catch (e) {
+                document.getElementById('synonyms-container').innerHTML = '<div style="color:#ef4444">Failed to load synonyms.</div>';
+            }
+        }
+
+        function closeSynonymsModal() {
+            document.getElementById('synonyms-modal').style.display = 'none';
+        }
+
+        function renderSynonyms() {
+            const container = document.getElementById('synonyms-container');
+            container.innerHTML = '';
+            const entries = Object.entries(synonymsState);
+            if (entries.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-dim); margin-bottom:12px; font-size:12px;">No synonyms configured yet. Click below to start.</div>';
+            } else {
+                for (const [base, syns] of entries) {
+                    container.appendChild(createChainElement(base, syns));
+                }
+            }
+        }
+
+        function createChainElement(base, syns) {
+            const div = document.createElement('div');
+            div.className = 'syn-chain-container';
+
+            // Header (Base word)
+            const header = document.createElement('div');
+            header.className = 'syn-chain-header';
+            header.innerHTML = `
+            <div>
+                <input type="text" class="syn-base-word" value="${base}" readonly>
+                <button class="syn-btn" onclick="editBaseWord('${base}')" title="Edit Base">✏️</button>
+            </div>
+            <button class="syn-btn delete" onclick="deleteChain('${base}')" title="Delete Entire Chain">🗑️ Delete Chain</button>
+        `;
+
+            // Nodes wrapper
+            const nodesWrap = document.createElement('div');
+            nodesWrap.className = 'syn-nodes-wrapper';
+
+            syns.forEach((syn, index) => {
+                if (index > 0) {
+                    const arrow = document.createElement('span');
+                    arrow.className = 'syn-arrow';
+                    arrow.innerText = '→';
+                    nodesWrap.appendChild(arrow);
+                }
+
+                const node = document.createElement('div');
+                node.className = 'syn-node';
+                node.innerHTML = `
+                <span class="syn-text">${syn}</span>
+                <button class="syn-btn" onclick="editSynonym('${base}', ${index})" style="font-size:10px; margin-left:6px;" title="Edit Synonym">✏️</button>
+                <span class="syn-remove-node" onclick="removeSynonym('${base}', ${index})" title="Remove Synonym">✕</span>
+            `;
+                nodesWrap.appendChild(node);
+            });
+
+            if (syns.length > 0) {
+                const arrow = document.createElement('span');
+                arrow.className = 'syn-arrow';
+                arrow.innerText = '→';
+                nodesWrap.appendChild(arrow);
+            }
+
+            const addBtn = document.createElement('button');
+            addBtn.className = 'syn-add-node';
+            addBtn.innerText = '+ Add Synonym';
+            addBtn.onclick = () => addSynonymToChain(base);
+            nodesWrap.appendChild(addBtn);
+
+            div.appendChild(header);
+            div.appendChild(nodesWrap);
+            return div;
+        }
+
+        function deleteChain(base) {
+            if (confirm(`Are you sure you want to delete the entire synonym chain for '${base}'?`)) {
+                delete synonymsState[base];
+                renderSynonyms();
+            }
+        }
+
+        function removeSynonym(base, index) {
+            synonymsState[base].splice(index, 1);
+            renderSynonyms();
+        }
+
+        function addSynonymToChain(base) {
+            const newSyn = prompt(`Enter a new synonym to link to '${base}':`);
+            if (newSyn && newSyn.trim()) {
+                if (!synonymsState[base]) synonymsState[base] = [];
+                synonymsState[base].push(newSyn.trim().toLowerCase());
+                renderSynonyms();
+            }
+        }
+
+        function editSynonym(base, index) {
+            const newSyn = prompt("Edit synonym:", synonymsState[base][index]);
+            if (newSyn && newSyn.trim()) {
+                synonymsState[base][index] = newSyn.trim().toLowerCase();
+                renderSynonyms();
+            }
+        }
+
+        function editBaseWord(oldBase) {
+            const newBase = prompt("Edit Base Keyword:", oldBase);
+            if (newBase && newBase.trim() && newBase !== oldBase) {
+                const cleanBase = newBase.trim().toLowerCase();
+                if (synonymsState[cleanBase]) {
+                    alert("This base keyword already exists!");
+                    return;
+                }
+                synonymsState[cleanBase] = synonymsState[oldBase];
+                delete synonymsState[oldBase];
+                renderSynonyms();
+            }
+        }
+
+        function addNewChain() {
+            const base = prompt("Enter the primary base keyword for the new chain:");
+            if (base && base.trim()) {
+                const cleanBase = base.trim().toLowerCase();
+                if (!synonymsState[cleanBase]) {
+                    synonymsState[cleanBase] = [];
+                } else {
+                    alert("This base keyword already exists!");
+                }
+                renderSynonyms();
+            }
+        }
+
+        async function saveSynonyms() {
+            try {
+                const res = await fetch('/api/synonyms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ synonyms: synonymsState })
+                });
+                const d = await res.json();
+                if (res.ok) {
+                    closeSynonymsModal();
+                    addSysMsg('✅ ' + d.message);
+                } else {
+                    alert('Failed to save synonyms configuration');
+                }
+            } catch (e) {
+                alert('Error communicating with the backend to save synonyms');
+            }
+        }
+
+        /* ── API DISCOVERY FLOW ── */
+        let _discoveryCache = {};  // stores last discovered data per cacheKey
+
+        async function discoverFromAPI(btn, query, excludedEndpoints = []) {
+            const container = btn.parentElement;
+            container.innerHTML = `<div style="color:var(--text-dim); font-size:12px; display:flex; align-items:center; gap:8px;">
+            <span style="display:inline-block; width:14px; height:14px; border:2px solid #f59e0b; border-top-color:transparent; border-radius:50%; animation:spin 0.7s linear infinite;"></span>
+            Searching university APIs${excludedEndpoints.length > 0 ? ' (retrying with next best match)' : ''}...
+        </div>`;
+
+            try {
+                const res = await fetch('/api/discover', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, excluded_endpoints: excludedEndpoints })
+                });
+                const data = await res.json();
+
+                if (!data.found) {
+                    const triedList = (data.attempted || excludedEndpoints).join(', ') || 'none';
+                    container.innerHTML = `
+                    <div style="color:#ef4444; font-size:13px; margin-bottom:6px;">❌ ${data.message}</div>
+                    <div style="color:#6b7280; font-size:10px;">APIs tried: <code>${triedList}</code></div>`;
+                    return;
+                }
+
+                // Track all attempted endpoints for retry flow
+                const allAttempted = data.attempted || [...excludedEndpoints, data.endpoint];
+
+                // Store result for save action
+                const cacheKey = 'disc_' + Date.now();
+                _discoveryCache[cacheKey] = { ...data, query, allAttempted };
+
+                // Build preview table (first 5 rows only)
+                const previewRecords = data.records.slice(0, 5);
+                const cols = previewRecords[0] ? Object.keys(previewRecords[0]).slice(0, 5) : [];
+                const headerCells = cols.map(c => `<th style="padding:5px 10px; text-align:left; color:#94a3b8; font-size:11px; border-bottom:1px solid rgba(255,255,255,0.06)">${c}</th>`).join('');
+                const bodyRows = previewRecords.map(r =>
+                    `<tr>${cols.map(c => `<td style="padding:5px 10px; font-size:11px; color:#e2e8f0; border-bottom:1px solid rgba(255,255,255,0.04)">${r[c] ?? '—'}</td>`).join('')}</tr>`
+                ).join('');
+
+                const retryNote = excludedEndpoints.length > 0
+                    ? `<span style="color:#6b7280; font-size:10px; margin-left:8px;">(${excludedEndpoints.length} endpoint(s) already tried)</span>`
+                    : '';
+
+                container.innerHTML = `
+                <div style="font-size:12px; color:var(--text-dim); margin-bottom:8px;">
+                    ✅ Found <strong style="color:#34d399">${data.count} records</strong> from
+                    <code style="background:rgba(255,255,255,0.05); padding:1px 5px; border-radius:3px;">${data.endpoint}</code>
+                    <span style="margin-left:6px; color:#4b5563; font-size:10px;">(showing first 5)</span>${retryNote}
+                </div>
+                <div style="overflow-x:auto; margin-bottom:10px;">
+                    <table style="width:100%; border-collapse:collapse; background:rgba(255,255,255,0.02); border-radius:6px; overflow:hidden;">
+                        <thead><tr>${headerCells}</tr></thead>
+                        <tbody>${bodyRows}</tbody>
+                    </table>
+                </div>
+                <div style="font-size:12px; color:var(--text-dim); margin-bottom:8px;">Is this the correct data? Save it so the AI can answer instantly next time (0 API cost).</div>
+                <div class="discover-result-actions" id="actions-${cacheKey}">
+                    <button class="btn-save-rag" onclick="saveToRAG('${cacheKey}', this)">
+                        ✅ Correct! Save to AI Knowledge Base
+                    </button>
+                    <button class="btn-discard-rag" onclick="retryDiscover('${cacheKey}', this)">
+                        🔄 Not What I Need — Try Next API
+                    </button>
+                </div>`;
+
+            } catch (e) {
+                container.innerHTML = `<div style="color:#ef4444; font-size:13px;">⚠️ Discovery failed: ${e.message}</div>
+                <button class="btn-discover-api" style="margin-top:8px;" onclick="discoverFromAPI(this, ${JSON.stringify(query).replace(/"/g, '&quot;')}, ${JSON.stringify(excludedEndpoints)})">
+                    🔄 Retry
+                </button>`;
+            }
+        }
+
+        function retryDiscover(cacheKey, btn) {
+            const data = _discoveryCache[cacheKey];
+            if (!data) { addSysMsg('⚠️ Session expired. Please search again.'); return; }
+            const actionsDiv = document.getElementById(`actions-${cacheKey}`);
+            if (!actionsDiv) return;
+            delete _discoveryCache[cacheKey];
+            // Retry with the current endpoint + all previously tried ones excluded
+            discoverFromAPI(actionsDiv, data.query, data.allAttempted);
+        }
+
+        async function saveToRAG(cacheKey, btn) {
+            const data = _discoveryCache[cacheKey];
+            if (!data) { addSysMsg('⚠️ Data expired. Please search again.'); return; }
+
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Saving to AI knowledge base...';
+
+            try {
+                const res = await fetch('/api/ingest-to-rag', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: data.endpoint,
+                        label: data.label,
+                        records: data.records
+                    })
+                });
+                const d = await res.json();
+                btn.closest('.discover-result-actions').innerHTML = `
+                <div style="color:#34d399; font-size:12px;">
+                    ✅ ${d.message}<br>
+                    <span style="color:#6b7280; font-size:10px;">You can now ask about ${data.label} anytime — answered instantly from local AI!</span>
+                </div>`;
+                delete _discoveryCache[cacheKey];
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerHTML = '✅ Correct! Save to AI Knowledge Base';
+                addSysMsg('⚠️ Save failed: ' + e.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

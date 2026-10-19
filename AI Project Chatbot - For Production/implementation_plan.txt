@@ -1,0 +1,301 @@
+# Industry-Grade API Chatbot — System Design Architecture
+
+## The Problem With Your Current Approach
+
+Your current bot stores every API row as a text document in FAISS (RAG). Here's why that breaks:
+
+Current Flow:
+API Response (140 courses) → 140 text documents → FAISS vector store → Semantic search → Keyword filter → Table
+
+Problems at scale:
+- 1,000 rows = 1,000 docs (slow search, RAM bloat)
+- 10,000 rows = FAISS search returns wrong top-k matches
+- "List ALL courses" requires k=10000 (defeats purpose of vector search)
+- Keyword filtering is a hack on top of semantic search
+- No GROUP BY, COUNT, SUM, AVG, WHERE, JOIN — RAG can't do SQL operations
+- Every nightly refresh rebuilds entire vector store
+
+IMPORTANT: RAG is designed for unstructured text (PDFs, policies, documentation). 
+Putting structured/tabular data into RAG is an anti-pattern that every major AI company has moved away from.
+
+---
+
+## Industry-Grade Architecture
+
+The correct architecture separates structured data (API/database) from unstructured data (docs/policies):
+
+                    ┌─────────────────────┐
+                    │   Chat Widget        │
+                    │   (Embeddable JS)    │
+                    └─────────┬───────────┘
+                              │ User Query
+                    ┌─────────▼───────────┐
+                    │   FastAPI Server     │
+                    │   (Multi-Tenant)     │
+                    └─────────┬───────────┘
+                              │
+                    ┌─────────▼───────────┐
+                    │   Intent Router      │
+                    └──┬──────┬──────┬────┘
+                       │      │      │
+            ┌──────────▼┐  ┌──▼────┐ ┌▼──────────┐
+            │ LLM       │  │ RAG   │ │ Live API  │
+            │ (Ollama/  │  │(Docs  │ │ Gateway   │
+            │  OpenAI)  │  │ Only) │ │           │
+            └─────┬─────┘  └───────┘ └───────────┘
+                  │
+         ┌────────┼────────┐
+         │        │        │
+    ┌────▼───┐ ┌──▼────┐ ┌─▼──────────┐
+    │Generates│ │Tool   │ │Function    │
+    │  SQL    │ │Registry│ │Calling     │
+    └────┬───┘ └───────┘ └────────────┘
+         │
+    ┌────▼────────────────┐
+    │ SQLite / PostgreSQL  │
+    │ (Structured Data)    │
+    └─────────────────────┘
+
+
+### The Two Core Patterns
+
+#### Pattern 1: Text-to-SQL (For Structured Data) ⭐
+Used by: Databricks AI/BI, ThoughtSpot Sage, Google BigQuery AI, AWS QuickSight Q
+
+Instead of storing API data as text documents in RAG, store it in a real database 
+and let the LLM write SQL queries.
+
+Example 1:
+  User: "Show me all pharmacy courses"
+    ↓
+  LLM generates: SELECT * FROM courses WHERE description LIKE '%pharm%'
+    ↓
+  Execute SQL → Get exact results (no keyword filtering needed)
+    ↓
+  LLM formats response with analysis
+
+Example 2:
+  User: "Which hostel has the most capacity?"
+    ↓
+  LLM generates: SELECT * FROM hostels ORDER BY capacity DESC LIMIT 1
+    ↓
+  No need for manual "analytical filtering" logic — SQL handles it natively
+
+Why this is better:
+
+  Feature              | RAG (Current)              | Text-to-SQL (Industry)
+  ---------------------|----------------------------|--------------------------------
+  "List ALL courses"   | Need k=10000, slow         | SELECT * FROM courses — instant
+  "Count by category"  | Impossible                 | SELECT category, COUNT(*) GROUP BY category
+  "Average duration"   | Manual Python code         | SELECT AVG(duration) FROM courses
+  "Filter + Sort"      | Keyword hacks              | WHERE ... ORDER BY ...
+  100K rows            | FAISS crashes              | SQLite handles millions
+  Exact match          | Fuzzy/unreliable           | 100% accurate
+
+
+#### Pattern 2: Function Calling / Tool Use (For Live APIs)
+Used by: ChatGPT Plugins, Google Gemini, Claude MCP, Copilot
+
+Instead of the bot discovering APIs at runtime, you pre-register API endpoints 
+as tools with their schemas. The LLM decides which tool to call.
+
+  # Tool definition (auto-generated from Swagger/OpenAPI)
+  tools = [
+      {
+          "name": "get_courses",
+          "description": "Fetch all university courses. Can filter by type.",
+          "parameters": {
+              "type": {"enum": ["UG", "PG", "Diploma"], "optional": True}
+          },
+          "endpoint": "GET /api/Course"
+      },
+      {
+          "name": "get_hostels",
+          "description": "Fetch hostel information including capacity",
+          "endpoint": "GET /api/HostelMaster"
+      }
+  ]
+
+  # LLM sees these tools and decides:
+  # User: "Show pharmacy courses" → LLM calls get_courses() → filters results
+  # User: "Book a hostel room"   → LLM calls get_hostels() → suggests options
+
+---
+
+## Multi-Tenant Product Architecture
+
+To make this work for any website with any APIs, you need a multi-tenant SaaS design:
+
+  ┌─────────────────────┐    ┌─────────────────────┐
+  │  Customer A:        │    │  Customer B:        │
+  │  University         │    │  E-Commerce         │
+  │  university.edu     │    │  shop.com           │
+  │  /api/Course        │    │  /api/Products      │
+  │  /api/Hostel        │    │  /api/Orders        │
+  └─────────┬───────────┘    └─────────┬───────────┘
+            │                          │
+            │    ┌────────────────┐    │
+            └───►│  JS Widget     │◄───┘
+                 │  (2 lines of   │
+                 │   embed code)  │
+                 └───────┬────────┘
+                         │
+            ┌────────────▼────────────┐
+            │  Your Platform          │
+            │  ┌───────────────────┐  │
+            │  │ Admin Dashboard   │  │
+            │  │ (Register APIs)   │  │
+            │  └───────────────────┘  │
+            │  ┌───────────────────┐  │
+            │  │ Multi-Tenant      │  │
+            │  │ Bot Engine        │  │
+            │  └───────────────────┘  │
+            │  ┌───────────────────┐  │
+            │  │ Tenant DB         │  │
+            │  │ (configs, data)   │  │
+            │  └───────────────────┘  │
+            └─────────────────────────┘
+
+
+### How a Customer Onboards
+
+  Step 1: Customer signs up on your admin dashboard
+  Step 2: They paste their Swagger/OpenAPI URL (or manually add API endpoints)
+  Step 3: Your system auto-generates:
+           - SQL schema from API response structure
+           - Tool definitions for the LLM
+           - Initial data sync
+  Step 4: Customer gets an embed code:
+           <script src="https://yourdomain.com/widget.js" data-tenant="abc123"></script>
+  Step 5: Bot is live on their website!
+
+
+### Database Schema (Multi-Tenant)
+
+  -- Tenants (customers)
+  CREATE TABLE tenants (
+      id UUID PRIMARY KEY,
+      name TEXT,              -- "Karnvati University"
+      domain TEXT,            -- "karnavatiuniversity.edu.in"
+      api_base_url TEXT,      -- "http://kuriseapi.karnavatiuniversity.edu.in"
+      llm_provider TEXT,      -- "ollama" | "openai" | "gemini"
+      llm_model TEXT,         -- "llama3.1:8b"
+      created_at TIMESTAMP
+  );
+
+  -- Registered API endpoints per tenant
+  CREATE TABLE api_endpoints (
+      id UUID PRIMARY KEY,
+      tenant_id UUID REFERENCES tenants(id),
+      path TEXT,              -- "/api/Course"
+      label TEXT,             -- "courses"
+      method TEXT DEFAULT 'GET',
+      description TEXT,       -- "University course catalog"
+      response_schema JSONB,  -- Auto-detected column schema
+      sync_interval TEXT DEFAULT 'daily',
+      last_synced_at TIMESTAMP
+  );
+
+  -- Cached API data (replaces FAISS for structured data)
+  CREATE TABLE api_data (
+      id SERIAL PRIMARY KEY,
+      tenant_id UUID REFERENCES tenants(id),
+      endpoint_id UUID REFERENCES api_endpoints(id),
+      data JSONB,             -- The actual row from the API
+      synced_at TIMESTAMP DEFAULT NOW()
+  );
+  -- Index for fast queries
+  CREATE INDEX idx_api_data_tenant ON api_data(tenant_id, endpoint_id);
+
+  -- Unstructured docs (this is where RAG stays useful)
+  CREATE TABLE documents (
+      id UUID PRIMARY KEY,
+      tenant_id UUID REFERENCES tenants(id),
+      title TEXT,
+      content TEXT,           -- PDF text, policy, FAQ
+      embedding VECTOR(384),  -- pgvector for similarity search
+      source TEXT
+  );
+
+
+### Query Flow (Production)
+
+  User asks: "Which course has the shortest duration?"
+
+  1. Widget sends: POST /api/chat { tenant: "abc123", query: "..." }
+
+  2. Server identifies tenant → loads their API schema + tool definitions
+
+  3. LLM receives:
+     System: "You are a chatbot for Karnvati University.
+              Available data tables: courses (140 rows), hostels (16 rows), roles (14 rows)
+              You can run SQL queries on these tables.
+              Schema: courses(code INT, description TEXT, duration TEXT, graduation TEXT, ...)"
+
+     User: "Which course has the shortest duration?"
+
+  4. LLM generates: SELECT * FROM courses ORDER BY duration ASC LIMIT 1
+
+  5. Server executes SQL on tenant's cached data → returns result
+
+  6. LLM formats: "The shortest course is B.Design (Hons.) with a duration of 2Y."
+
+---
+
+## Tech Stack Recommendation
+
+  Layer              | Technology                          | Why
+  -------------------|-------------------------------------|------------------------------------
+  LLM                | Ollama (local) or OpenAI API        | Ollama = free, OpenAI = better quality
+  Structured Data    | SQLite (single) or PostgreSQL (multi)| SQL queries, not RAG
+  Unstructured Docs  | pgvector (PostgreSQL) or ChromaDB   | RAG only for text docs
+  Backend            | FastAPI (Python)                    | You already know it
+  Frontend Widget    | Vanilla JS (embeddable <script>)    | Works on any website
+  Admin Dashboard    | Next.js or plain HTML               | For customers to register APIs
+  Sync/Scheduling    | APScheduler or Celery               | Nightly data refresh
+  Auth               | API keys per tenant                 | Simple, scalable
+
+---
+
+## Phased Migration Roadmap
+
+### Phase 1: Text-to-SQL (Replace RAG for structured data)
+  - Store API data in SQLite instead of FAISS
+  - LLM writes SQL queries instead of keyword filtering
+  - Keep the same UI
+  - Eliminates: All keyword filtering, synonym expansion, analytical filtering
+  - Effort: 3-5 days
+
+### Phase 2: Ollama Integration
+  - Replace NVIDIA NIM with local Ollama
+  - Remove token-saving presentation mode
+  - Full natural language analysis on every query
+  - Effort: 1-2 days
+
+### Phase 3: Multi-Tenant + Embeddable Widget
+  - Add tenant management
+  - Auto-generate schemas from Swagger/OpenAPI
+  - Build embeddable JS widget
+  - Effort: 1-2 weeks
+
+### Phase 4: Admin Dashboard
+  - Web UI for customers to register their APIs
+  - Configure bot personality, colors, branding
+  - View analytics per tenant
+  - Effort: 1 week
+
+TIP: Start with Phase 1 + 2. This gets you a dramatically better bot for the 
+university in under a week. Phases 3-4 turn it into a product.
+
+---
+
+## Summary
+
+  Question                                | Answer
+  ----------------------------------------|------------------------------------------------
+  Why does RAG fail at scale?             | It's designed for text search, not structured data queries
+  Industry standard for structured data?  | Text-to-SQL — LLM writes SQL, database executes
+  Industry standard for live APIs?        | Function Calling — LLM decides which API to call
+  How to make it multi-tenant?            | Tenant ID + per-tenant config + embeddable widget
+  What should RAG be used for?            | Only for unstructured text (PDFs, policies, FAQs)
+  Recommended first step?                 | Replace FAISS with SQLite + Ollama for text-to-SQL

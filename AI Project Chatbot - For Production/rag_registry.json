@@ -1,0 +1,72 @@
+{
+  "Course": {
+    "keywords": [
+      "course",
+      "courses",
+      "cource",
+      "cources",
+      "class",
+      "classes",
+      "program",
+      "programs",
+      "degree",
+      "degrees"
+    ],
+    "endpoint": "/api/Course",
+    "added_at": "seed"
+  },
+  "Role": {
+    "keywords": [
+      "role",
+      "roles",
+      "rolemaster"
+    ],
+    "endpoint": "/api/RoleMaster",
+    "added_at": "seed"
+  },
+  "AcademicYear": {
+    "keywords": [
+      "academicyear",
+      "academic",
+      "year",
+      "years",
+      "calendar"
+    ],
+    "endpoint": "/api/AcademicYear",
+    "added_at": "seed"
+  },
+  "HostelMaster": {
+    "keywords": [
+      "hostel",
+      "hostels",
+      "hostelmaster",
+      "accommodation",
+      "boarding",
+      "block"
+    ],
+    "endpoint": "/api/HostelMaster",
+    "added_at": "seed"
+  },
+  "RoleMaster": {
+    "keywords": [
+      "role",
+      "rolemaster",
+      "roles"
+    ],
+    "endpoint": "/api/RoleMaster",
+    "added_at": "2026-06-29T17:41:02.716813"
+  },
+  "RoomWiseBed": {
+    "keywords": [
+      "bed",
+      "beds",
+      "room",
+      "rooms",
+      "roomwisebed",
+      "wise",
+      "wises"
+    ],
+    "endpoint": "/api/RoomWiseBed",
+    "added_at": "2026-07-06T16:48:51.273999"
+  }
+}

@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Start Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "enterprise_fastapi_server.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}
